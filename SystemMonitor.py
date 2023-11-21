@@ -24,31 +24,28 @@ def check_abuseipdb(ip_address, max_age_in_days=30, verbose=False):
     }
     headers = {
         'Accept': 'application/json',
-        'Key': api_key,  # Replace with your AbuseIPDB API key
+        'Key': api_key,  
     }
 
     try:
         response = requests.get(base_url, params=query_params, headers=headers)
-        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx status codes)
+        response.raise_for_status()  
 
         decoded_response = response.json()
         data = decoded_response.get('data', {})
         is_whitelisted = data.get('isWhitelisted', None)
         abuse_confidence_score = data.get('abuseConfidenceScore', None)
-        country_name = data.get('countryName', {})  # Assuming the API provides geolocation information
+        country_name = data.get('countryName', {})  
         return is_whitelisted, abuse_confidence_score, country_name
 
     except requests.exceptions.RequestException as e:
         print(f"Request Exception: {e}")
-        # Handle the exception as needed (log, raise, etc.)
         return None, None, None
     except json.JSONDecodeError as e:
         print(f"JSON Decode Error: {e}")
-        # Handle the exception as needed (log, raise, etc.)
         return None, None, None
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-        # Handle the exception as needed (log, raise, etc.)
         return None, None, None
 
 
@@ -100,25 +97,23 @@ class IPCheckThread(QThread):
         # Check if the API call limit is reached
         base_url = 'https://api.abuseipdb.com/api/v2/check'
         query_params = {
-            'ipAddress': '8.8.8.8',  # Use a dummy IP address for checking API limit
+            'ipAddress': '8.8.8.8',  
             'maxAgeInDays': self.max_age_in_days,
             'verbose': False,
         }
         headers = {
             'Accept': 'application/json',
-            'Key': api_key,  # Replace with your AbuseIPDB API key
+            'Key': api_key, 
         }
 
         try:
             response = requests.get(base_url, params=query_params, headers=headers)
-            return response.status_code == 429  # Check if the status code is 429 (Too Many Requests)
+            return response.status_code == 429  
         except requests.exceptions.RequestException as e:
             print(f"Request Exception: {e}")
-            # Handle the exception as needed (log, raise, etc.)
-            return True  # Assume the limit is reached in case of an exception
+            return True  
 
     def is_ip_checked(self, ip_address):
-        # Check if the IP is in the checked IPs CSV file
         checked_ips_file = "checkedIPs.csv"
 
         if not os.path.exists(checked_ips_file):
@@ -126,7 +121,6 @@ class IPCheckThread(QThread):
 
         with open(checked_ips_file, 'r') as file:
             reader = csv.reader(file)
-            # Check if the IP is already in the file
             for row in reader:
                 if row and row[0] == ip_address:
                     return True
@@ -134,25 +128,21 @@ class IPCheckThread(QThread):
         return False
 
     def update_checked_ips(self, ip_address, is_whitelisted, abuse_confidence_score, country_name):
-        # Update the checked IPs CSV file
         print(
             f"Updating checked IPs for {ip_address}. Is Whitelisted: {is_whitelisted}, Score: {abuse_confidence_score}, Country: {country_name}")
         checked_ips_file = "checkedIPs.csv"
         with open(checked_ips_file, 'a', newline='') as file:
             writer = csv.writer(file)
-            # If the file is empty, write headers
             if file.tell() == 0:
                 writer.writerow(["IP Address", "Is Whitelisted", "Abuse Confidence Score", "Country"])
             writer.writerow([ip_address, is_whitelisted, abuse_confidence_score, country_name])
 
-        # If the abuse confidence score is higher than 50, also update the abusive IPs CSV file
         if abuse_confidence_score is not None and abuse_confidence_score > 1:
             abusive_ips_file = "abusiveIPs.csv"
             with open(abusive_ips_file, 'a', newline='') as file:
                 writer = csv.writer(file)
                 writer.writerow([ip_address, abuse_confidence_score, country_name])
 
-        # Emit the signal with the results
         self.ip_checked.emit(ip_address, is_whitelisted if is_whitelisted is not None else False,
                              abuse_confidence_score, country_name)
 
@@ -223,10 +213,8 @@ class TrafficThread(QThread):
             while self._is_running:
                 connections = self.get_connections()
 
-                # Save the connections data to the CSV file
                 self.save_to_csv(connections)
 
-                # Emit the updated signal with the connections data
                 self.updated.emit(connections)
 
                 self.msleep(1000)
@@ -303,8 +291,7 @@ class AbusiveIPWidget(QTreeWidget):
         self.setHeaderLabels(["Abusive IP Address", "Abuse Confidence Score", "Country"])
         self.setColumnWidth(0, 200)
         self.setColumnWidth(1, 200)
-        self.setColumnWidth(2, 200)  # Adjust the width as needed
-
+        self.setColumnWidth(2, 200)  
         self.abusive_ips_file = abusive_ips_file
         self.load_abusive_ips()
 
@@ -312,7 +299,6 @@ class AbusiveIPWidget(QTreeWidget):
         if os.path.exists(self.abusive_ips_file):
             with open(self.abusive_ips_file, 'r') as file:
                 reader = csv.reader(file)
-                # Skip the header
                 next(reader, None)
                 for row in reader:
                     if row:
@@ -328,10 +314,7 @@ class AbusiveIPWidget(QTreeWidget):
         parent.setText(2, country_name)
 
     def refresh_abusive_ips(self):
-        # Clear existing items in the widget
         self.clear()
-
-        # Load the latest abusive IPs from the CSV file
         self.load_abusive_ips()
 
 class InfoFrame(QTreeWidget):
@@ -390,7 +373,6 @@ class ClosingThread(QThread):
         self.closed.emit()
 
     def stop_threads(self):
-        # Stop and wait for the threads to finish
         self.update_thread.stop()
         self.traffic_thread.stop()
         self.ip_check_thread.stop()
@@ -437,29 +419,24 @@ class SystemMonitor(QMainWindow):
 
         self.closing_progress_dialog = ClosingProgressDialog("Closing, please wait...", self)
         
-        # Specify the path for the CSV file
         csv_file = "NetworkTrafficLog.csv"
         unique_ip_file = "uniqueIpAddress.csv"
         checked_ip_file = "checkedIPs.csv"
         abusive_ip_file = "abusiveIPs.csv"
 
-        # Create the files with headers if they don't exist
         self.create_csv_file(csv_file, ["Type", "Local Address", "Remote Address"])
         self.create_csv_file(unique_ip_file, ["IP Address"])
         self.create_csv_file(checked_ip_file, ["IP Address", "Is Whitelisted", "Abuse Confidence Score"])
         self.create_csv_file(abusive_ip_file, ["IP Address", "Abuse Confidence Score", "Country"])
 
-        # Create and start the UpdateThread
         self.update_thread = UpdateThread()
         self.update_thread.updated.connect(self.system_info.set_info)
         self.update_thread.start()
 
-        # Create and start the TrafficThread
         self.traffic_thread = TrafficThread(csv_file, unique_ip_file)
         self.traffic_thread.updated.connect(self.traffic_widget.set_traffic_info)
         self.traffic_thread.start()
 
-        # Create and start the IPCheckThread
         self.ip_check_thread = IPCheckThread()
         self.ip_check_thread.ip_checked.connect(self.handle_ip_checked)
         self.ip_check_thread.start()
@@ -468,14 +445,9 @@ class SystemMonitor(QMainWindow):
     def handle_ip_checked(self, ip_address, is_whitelisted, abuse_confidence_score, country_name):
         if abuse_confidence_score is not None and abuse_confidence_score > 1:
             self.abusive_ip_widget.add_abusive_ip(ip_address, abuse_confidence_score, country_name)
-            # Refresh the AbusiveIPWidget with the latest data
             self.abusive_ip_widget.refresh_abusive_ips()
-        # You can use country_name as needed in your application
-        # For example, print it:
-        print(f"Country info for {ip_address}: {country_name}")
 
     def stop_threads(self):
-        # Stop and wait for the threads to finish
         self.update_thread.stop()
         self.traffic_thread.stop()
         self.ip_check_thread.stop()
@@ -487,7 +459,6 @@ class SystemMonitor(QMainWindow):
                 writer.writerow(headers)
 
     def closeEvent(self, event):
-        # Override the close event to stop threads before exiting
         self.closing_progress_dialog = ClosingProgressDialog("Closing, please wait...", self)
         self.closing_thread = ClosingThread(self.update_thread, self.traffic_thread, self.ip_check_thread)
         self.closing_thread.closed.connect(self.closing_progress_dialog.accept)
