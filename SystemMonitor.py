@@ -106,7 +106,7 @@ class IPCheckThread(QThread):
         }
         headers = {
             'Accept': 'application/json',
-            'Key': 'a131308d736a692d4e2c48dc9f09f3b08eadb40b4b0414b6807ea40e5c6a6a5552b21c99aac1c4c4',  # Replace with your AbuseIPDB API key
+            'Key': api_key,  # Replace with your AbuseIPDB API key
         }
 
         try:
